@@ -37,14 +37,12 @@ conflicted::conflict_prefer("here", "here")
 conflicted::conflicts_prefer(dplyr::filter)
 
 ## File paths ##
-p.regions.2021 <- here("data_processed/urban/LSOA2021_EW/regions_boundary/") # p.regions.correct
-p.grsp.avail <- here("data_processed/os_greenspace/plantable_available_lsoa2021/")
-p.pave.avail <- here("data_processed/os_topo/manmade_plantable/pavement_plantable_available_lsoa2021/")
-p.lsoa.out <- here("data_processed/lsoa_2021_vars/")
-p.area.plantable <- here("data_processed/assessment/lsoa2021/plantable_area_calc/")
-p.rast.town <- here("data_processed/model_rasters/LSOA2021_town_border/")
-p.plots <- here("data_processed/assessment/lsoa2021/plantable_area_calc/plots/")
-p.plots.paper <- here("data_processed/assessment/lsoa2021/town_target/plots_paper/")
+p.regions <- here("data/geography/") # urban boundaries
+p.output <- here("data/outputs/") # output data from the assessment
+p.lsoa.vars <-  here("data/lsoa_variables/") # variables summarised to LSOA level; canopy cover and IMD
+p.plots <- here("data/outputs/plots/") # output plots
+p.greenspace <- here("data/greenspace/") # Plantable greenspace polygons
+p.pavement <- here("data/pavement/") # Plantable pavement polygons
 
 
 ## Parameters ##
@@ -62,13 +60,13 @@ target_cover <- 0.20 # Target town level canopy cover
 # Output summarized for each LSOA and by town
 
 # Files #
-grsp_all_poly <- list.files(p.grsp.avail, pattern = "plant_park_buff_", full.names = TRUE)
-grsp_npg_poly <- list.files(p.grsp.avail, pattern = "plant_npg_park_buff_", full.name = TRUE)
-grsp_pub_poly <- list.files(p.grsp.avail, pattern = "plant_public_park_buff_", full.name = TRUE)
-pave_poly <- list.files(p.pave.avail, pattern = "gpkg", full.names = TRUE)
-urban_files <- list.files(p.regions.2021, pattern = "gpkg", full.name = T)
+grsp_all_poly <- list.files(p.greenspace, pattern = "plant_park_buff_", full.names = TRUE)
+grsp_npg_poly <- list.files(p.greenspace, pattern = "plant_npg_park_buff_", full.name = TRUE)
+grsp_pub_poly <- list.files(p.greenspace, pattern = "plant_public_park_buff_", full.name = TRUE)
+pave_poly <- list.files(p.pavement, pattern = "gpkg", full.names = TRUE)
+urban_files <- list.files(p.regions, pattern = "gpkg", full.name = T)
 # LSOA
-lsoa_dat <- st_read(paste0(p.lsoa.out, "/can_imd2025_lsoa2021_EngWales.gpkg"))
+lsoa_dat <- st_read(paste0(p.lsoa.vars, "/can_imd2025_lsoa2021_EngWales.gpkg"))
 # simplify LSOA data
 lsoa_loop <- lsoa_dat %>%
   dplyr::select(-c(PolyName, lsoa_name, lsoa_area_m2, TCITY15CD, TCITY15NM))
@@ -206,21 +204,21 @@ for(i in seq_along(urban_files)) {
                   grsp_pub_pave_ha = grsp_pub_area_ha + pave_area_ha) # Total plantable area for PUB Greenspace and Pavement
 
   # Save out for region i
-  sf::st_write(area_lsoa_i, paste0(p.area.plantable, "/plantable_area_by_region/plantable_area_lsoa_all_", reg_name, ".gpkg"))
+  sf::st_write(area_lsoa_i, paste0(p.output, "/plantable_area_by_region/plantable_area_lsoa_all_", reg_name, ".gpkg"))
   # Append to national csv output
   area_national_list[[i]] <- area_lsoa_i %>% sf::st_drop_geometry()
 }
 # Bind national list into national df of areas per lsoa
 area_national_df <- do.call(rbind, area_national_list)
 # Save out
-write.csv(area_national_df, paste0(p.area.plantable, "/plantable_area_lsoa_all_national.csv"), row.names = FALSE)
+write.csv(area_national_df, paste0(p.output, "/plantable_area_lsoa_all_national.csv"), row.names = FALSE)
 
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # > 1.1 Town summary for all LSOA -- plantable area  ####
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-area_national_df <- read.csv(paste0(p.area.plantable, "/plantable_area_lsoa_all_national.csv"))
+area_national_df <- read.csv(paste0(p.output, "/plantable_area_lsoa_all_national.csv"))
 area_by_town <- area_national_df %>%
   #dplyr::group_by(TownsNM, region) %>%
   summarise(.by = c(TownsNM, region),
@@ -246,7 +244,7 @@ area_by_town <- area_national_df %>%
     public_prop = round(gs_pub_ha/gs_all_ha, 4) # Proportion of All Greenspace that is Public 
   )
 # save out
-write.csv(area_by_town, paste0(p.area.plantable, "/summary_plantable_area_town.csv"), row.names = FALSE)
+write.csv(area_by_town, paste0(p.output, "/summary_plantable_area_town.csv"), row.names = FALSE)
 View(area_by_town)
 
 mean(area_by_town$gs_pub_prop); sd(area_by_town$gs_pub_prop) # 0.225
@@ -256,7 +254,7 @@ mean(area_by_town$pave_all_prop); sd(area_by_town$pave_all_prop) # 0.03631
 
 
 ## Plot Data ##
-area_by_town <- read.csv(paste0(p.area.plantable, "/summary_plantable_area_town.csv")) %>% 
+area_by_town <- read.csv(paste0(p.output, "/summary_plantable_area_town.csv")) %>% 
   dplyr::mutate(region = factor(region))
 
 # Define colour palettes 
@@ -345,7 +343,7 @@ area_by_region <- area_by_town %>%
     public_prop = round(gs_pub_ha/gs_all_ha, 4)) # Proportion of All Greenspace that is Public
 
 # save out
-write.csv(area_by_region, paste0(p.area.plantable, "/summary_plantable_area_region.csv"), row.names = FALSE)
+write.csv(area_by_region, paste0(p.output, "/summary_plantable_area_region.csv"), row.names = FALSE)
 View(area_by_region)
 
 # PLot
@@ -374,7 +372,7 @@ ggplot(mapping = aes(x = region, y = prop_plant_area, fill = lc_type)) +
         legend.title = element_text(size = 14),
         legend.text = element_text(size = 12),
         plot.margin = unit(c(.5, .7, .5, .5), "cm"))
-ggsave(paste0(p.plots.paper, "/greenspace_lc_type_by_region.png"), plot = last_plot(),
+ggsave(paste0(p.plots, "/greenspace_lc_type_by_region.png"), plot = last_plot(),
        device = "png",
        width = 30, height = 18, units = "cm")
 
@@ -388,7 +386,7 @@ ggsave(paste0(p.plots.paper, "/greenspace_lc_type_by_region.png"), plot = last_p
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # > 1.2 Town summary for LSOA < 20% Canopy Cover -- plantable area  ####
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-area_national_df <- read.csv(paste0(p.area.plantable, "/plantable_area_lsoa_all_national.csv"))
+area_national_df <- read.csv(paste0(p.output, "/plantable_area_lsoa_all_national.csv"))
 #_lcc indicates low canopy cover versions
 area_by_town_low <- area_national_df %>%
   dplyr::filter(prop_can_cover < target_cover) %>%
@@ -410,245 +408,6 @@ area_by_town_low <- area_national_df %>%
     non_pg_prop_lcc = 1 - pr_gard_prop_lcc # Proportion of All Greenspace that is Public (i.e. not private gardens)
   )
 # save out
-write.csv(area_by_town_low, paste0(p.area.plantable, "/summary_plantable_area_town_20cc.csv"), row.names = F)
-
-
-
-# ========================================================================================== #
-#### 2. Calculate proportion of trees allocated to Greenspace vs Pavement - from rasters ####
-# ========================================================================================== #
-
-lsoa_simp <- st_read(paste0(p.lsoa.out, "/can_imd2025_lsoa2021_EngWales.gpkg"))%>%
-  dplyr::select(c(PolyID, TownsNM, region))
-urban_files <- list.files(p.regions.2021, pattern = "reference_boundary", full.name = T)
-# Plantable layers, binary
-pave_bin_files <- list.files(p.rast.town, pattern = "pavement_plantable_binary_", full.names = T)
-gs_all_files <- list.files(p.rast.town, pattern = "grsp_park_buff_plantable_binary_", full.names = T)
-gs_npg_files <- list.files(p.rast.town, pattern = "grsp_park_buff_plantable_wout_priv_garden_binary_", full.names = T)
-gs_pub_files <- list.files(p.rast.town, pattern = "grsp_park_buff_plantable_public_binary_", full.names = T)
-# Lists for national level outputs
-summary_by_town_national <- vector("list", length = length(urban_files))
-summary_by_lsoa_national <- vector("list", length = length(urban_files))
-
-i <- 1
-j <- 1
-for (i in seq_along(urban_files)) {
-  region_i <- sf::st_read(urban_files[[i]]) # Region boundary
-  towns <- unique(region_i$TownsNM) # Towns in region
-  reg_name_i <- unique(region_i$region)
-  # Output lists
-  summary_df_i <- vector("list", length = length(towns)) # output list for summary by LSOA for towns in each region -- all plantable cells
- 
-  # For each town within region i
-  for(j in seq_along(towns)) {
-    town_j <- region_i %>%
-      dplyr::filter(TownsNM == towns[[j]])
-    # Extent town boundary
-    ext_j <- terra::ext(town_j)
-    # Read in binary rasters of plantable cells
-    pave_j <- terra::rast(pave_bin_files[[i]],  win = ext_j, snap = "near")
-    gs_all_j <- terra::rast(gs_all_files[[i]],  win = ext_j, snap = "near")
-    gs_npg_j <- terra::rast(gs_npg_files[[i]],  win = ext_j, snap = "near")
-    gs_pub_j <- terra::rast(gs_pub_files[[i]],  win = ext_j, snap = "near")
-    # Read in LSOA data for town j
-    lsoa_j <- lsoa_simp %>%
-      dplyr::filter(TownsNM == towns[[j]])
-
-    ## Combine rasters for planting scenarios ##
-    # Change values in pavement raster from 1 to 2
-    pave_j <- terra::subst(pave_j, 1, 2)
-    # ~ All Greenspace + Pavement ~ #
-    gs_all_pave_j <- gs_all_j + pave_j
-    names(gs_all_pave_j) <- "gs_all_pave_val"
-    # ~ NPG Greenspace + Pavement ~ #
-    gs_npg_pave_j <- gs_npg_j + pave_j
-    names(gs_npg_pave_j) <- "gs_npg_pave_val"
-    # ~ Pub Greenspace + Pavement ~ #
-    gs_pub_pave_j <- gs_pub_j + pave_j
-    names(gs_pub_pave_j) <- "gs_pub_pave_val"
-
-    ### ~~~ All Plantable Cells in All LSOAs ~~~ ###
-
-    ## Extract plantable cell values and join with lsoa data ##
-    # ~~ All Greenspace + Pavement ~~ #
-    val_gs_all_pave_j <- terra::as.points(gs_all_pave_j, values = TRUE, na.rm = T) %>%
-      sf::st_as_sf() %>%
-      dplyr::filter(gs_all_pave_val >=1)
-    # Combine raster values with LSOA information
-    gs_all_pave_lsoa_j <- sf::st_join(lsoa_j, val_gs_all_pave_j, .predicate = st_intersects) %>%
-      sf::st_drop_geometry(.)
-    # Summarize by LSOA the number of plantable cells for each landcover type
-    summary_all_pave <- gs_all_pave_lsoa_j %>%
-      group_by(PolyID) %>%
-      summarise(
-        gs_all_only = sum(gs_all_pave_val == 1), # All Greenspace cells only
-        pave_only_all = sum(gs_all_pave_val == 2), # Pavement cells only (in the All Greenspace combination)
-        gs_all_pave_overlap = sum(gs_all_pave_val == 3) # Cells plantable as All Greenspace and Pavement
-      )%>%
-      replace(is.na(.), 0) %>%
-      dplyr::mutate(total_cells_all = rowSums(across(where(is.numeric))))
-
-    # ~~ NPG Greenspace + Pavement ~~ #
-    val_gs_npg_pave_j <- terra::as.points(gs_npg_pave_j, values = TRUE, na.rm = T) %>%
-      sf::st_as_sf() %>%
-      dplyr::filter(gs_npg_pave_val >=1)
-    # Combine raster values with LSOA information
-    gs_npg_pave_lsoa_j <- sf::st_join(lsoa_j, val_gs_npg_pave_j, .predicate = st_intersects) %>%
-      sf::st_drop_geometry(.)
-    # Summarize by LSOA
-    summary_npg_pave <- gs_npg_pave_lsoa_j %>%
-      group_by(PolyID) %>%
-      summarise(
-        gs_npg_only = sum(gs_npg_pave_val == 1), # NPG Greenspace cells only
-        pave_only_npg = sum(gs_npg_pave_val == 2), # Pavement cells only (in the NPG Greenspace combination)
-        gs_npg_pave_overlap = sum(gs_npg_pave_val == 3) # Cells plantable as NPG Greenspace and Pavement
-      )%>%
-      replace(is.na(.), 0) %>%
-      dplyr::mutate(total_cells_npg = rowSums(across(where(is.numeric))))
-    
-    # ~~ PUB Greenspace + Pavement ~~ #
-    val_gs_pub_pave_j <- terra::as.points(gs_pub_pave_j, values = TRUE, na.rm = T) %>%
-      sf::st_as_sf() %>%
-      dplyr::filter(gs_pub_pave_val >=1)
-    # Combine raster values with LSOA information
-    gs_pub_pave_lsoa_j <- sf::st_join(lsoa_j, val_gs_pub_pave_j, .predicate = st_intersects) %>%
-      sf::st_drop_geometry(.)
-    # Summarize by LSOA
-    summary_pub_pave <- gs_pub_pave_lsoa_j %>%
-      group_by(PolyID) %>%
-      summarise(
-        gs_pub_only = sum(gs_pub_pave_val == 1), # PUB Greenspace cells only
-        pave_only_pub = sum(gs_pub_pave_val == 2), # Pavement cells only (in the PUB Greenspace combination)
-        gs_pub_pave_overlap = sum(gs_pub_pave_val == 3) # Cells plantable as PUB Greenspace and Pavement
-      )%>%
-      replace(is.na(.), 0) %>%
-      dplyr::mutate(total_cells_pub = rowSums(across(where(is.numeric))))
-    
-    # Combine planting scenario data sets ##
-    summary_lsoa_j <- merge(summary_all_pave, summary_npg_pave, by = "PolyID") %>%
-      dplyr::mutate(TownsNM = towns[[j]],
-                    total_gs_all_cells = gs_all_only+gs_all_pave_overlap, # number of trees (cells) in all the greenspace even if it overlaps with pavement
-                    total_gs_npg_cells = gs_npg_only + gs_npg_pave_overlap, # number of trees (cells) in the NPG greenspace even if it overlaps with pavement
-                    trees_pg = total_gs_all_cells - total_gs_npg_cells, # number of trees in private gardens only
-                    total_gs_pub_cells = gs_pub_only + gs_pub_pave_overlap # number of trees (cells) in the PUB greenspace even if it overlaps with pavement
-      )
-    # append to output list for region i
-    summary_df_i[[j]] <- summary_lsoa_j
-  }
-  ### ~~~ All Plantable Cells in All LSOAs ~~~ ###
-  # Bind together region data and append to output list
-  summary_by_lsoa_i <- do.call(rbind, summary_df_i) %>%
-    dplyr::mutate(region = reg_name_i)
-  summary_by_lsoa_national[[i]] <- summary_by_lsoa_i
-
-  # Summarize by town
-  summary_towns_i <- summary_by_lsoa_i %>%
-    group_by(TownsNM, region) %>%
-    summarise(
-      gs_all_only = sum(gs_all_only), # num greenspace cells in the All greenspace version (no overlap with pavement)
-      pave_only_all = sum(pave_only_all), # num pavement cells in the All greenspace version (no overlap with greenspace)
-      gs_all_pave_overlap = sum(gs_all_pave_overlap), # num cells that overlap b/w greenspace and pavement in the All Greenspace version
-      trees_pg = sum(trees_pg), # number of cells (trees) in private garden greenspace only
-      total_cells_all = sum(total_cells_all), # total number of plantable cells in All Greenspace version
-     # ~ #
-      gs_npg_only = sum(gs_npg_only), # num greenspace cells in the NPG greenspace version (no overlap with pavement)
-      pave_only_npg = sum(pave_only_npg), # num pavement cells in the NPG greenspace version (no overlap with greenspace)
-      gs_npg_pave_overlap = sum(gs_npg_pave_overlap), # num cells that overlap b/w greenspace and pavement in the NPG Greenspace version
-      total_cells_npg = sum(total_cells_npg), # total number of plantable cells in NPG Greenspace version
-     # ~ #
-     gs_pub_only = sum(gs_pub_only), # num greenspace cells in the PUB greenspace version (no overlap with pavement)
-     pave_only_pub = sum(pave_only_pub), # num pavement cells in the PUB greenspace version (no overlap with greenspace)
-     gs_pub_pave_overlap = sum(gs_pub_pave_overlap), # num cells that overlap b/w greenspace and pavement in the PUB Greenspace version
-     total_cells_pub = sum(total_cells_pub) # total number of plantable cells in PUB Greenspace version
-    )
-  # Append to national output
-  summary_by_town_national[[i]] <- summary_towns_i
-}
-# All plantable cells
-summary_by_lsoa_df <- do.call(rbind, summary_by_lsoa_national)
-write.csv(summary_by_lsoa_df, paste0(p.area.plantable, "/lc_contribution_by_lsoa_plantable.csv"), row.names = F)
-summary_by_town_df <- do.call(rbind, summary_by_town_national)
-write.csv(summary_by_town_df, paste0(p.area.plantable, "/lc_contribution_by_town_plantable.csv"), row.names = F)
-
-
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-# > 2.1 Explore landcover contributions -- All Plantable cells ####
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-summary_by_town_df <- read.csv(paste0(p.area.plantable, "/lc_contribution_by_town_plantable.csv"))
-summary_by_town_df <- summary_by_town_df %>% dplyr::mutate(total_gs_all_cells = gs_all_only + gs_all_pave_overlap, # number of trees (cells) in all the greenspace even if it overlaps with pavement
-                                                           total_gs_npg_cells = gs_npg_only + gs_npg_pave_overlap, # number of trees (cells) in the NPG greenspace even if it overlaps with pavement
-                                                           total_gs_pub_cells = gs_pub_only + gs_pub_pave_overlap) # number of trees (cells) in the PUB greenspace even if it overlaps with pavement
-
-
-# Overall landcover contributions for each greenspace option and type of analysis
-lc_cont <- summary_by_town_df %>%
-  dplyr::select(-c(TownsNM, region)) %>%
-  summarise(across(everything(), sum)) %>%
-  dplyr::mutate(prop_gs_all = round(gs_all_only/total_cells_all, 4),
-                prop_pave_all = round(pave_only_all/total_cells_all, 4),
-                prop_overlap_all = round(gs_all_pave_overlap/total_cells_all, 4),
-                prop_gs_npg = round(gs_npg_only/total_cells_npg, 4),
-                prop_pave_npg = round(pave_only_npg/total_cells_npg, 4),
-                prop_overlap_npg = round(gs_npg_pave_overlap/total_cells_npg, 4),
-                prop_gs_pub = round(gs_pub_only/total_cells_pub, 4),
-                prop_pave_pub = round(pave_only_pub/total_cells_pub, 4),
-                prop_overlap_pub = round(gs_pub_pave_overlap/total_cells_pub, 4)
-                ) %>%
-  dplyr::select(contains("prop")) %>%
-  pivot_longer(cols = starts_with("prop") , names_to = "scenario", values_to = "proportion") %>%
-  dplyr::mutate(
-    # gs_type = case_when(str_detect(scenario, "all") ~ "All Greenspace",
-    #                                 str_detect(scenario, "npg") ~ "NPG Greenspace",
-    #                                 str_detect(scenario, "pub") ~ "Public Greenspace"),
-                land_cover = factor(case_when(str_detect(scenario, "gs") ~ "Greenspace",
-                                              str_detect(scenario, "pave") ~ "Pavement",
-                                              str_detect(scenario, "overlap") ~ "Greenspace or Pavement")),
-                # Alternative GS labels
-                gs_type = case_when(str_detect(scenario, "all") ~ "AGS",
-                                    str_detect(scenario, "npg") ~ "NPG",
-                                    str_detect(scenario, "pub") ~ "PGS"),
-                analysis = "All Plantable Cells")
-
-
-
-## Plot outputs ##
-
-# Define colour palettes 
-gs_colours <- c("Greenspace" = "#015e5d", "Greenspace or Pavement" = "#e9c281", "Pavement" = "#895a14") # met.brew palette "VanGogh3"
-# Define labels for regions 
-#region_labels <- c("All Greenspace", "No Private Gardens", "Public Greenspace")
-gs_labels <- c("AGS", "NPG", "PGS")
-
-ggplot(lc_cont, aes(x = gs_type, y = proportion, fill = land_cover)) +
-  geom_bar(position = "stack", stat = "identity", width = 0.6) +
-  labs(y =  "Percent of plantable space", x = "Greenspace Scenario") +
-  # scale_y_continuous(labels = comma, expand = c(0,0)) +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
-                     expand = c(0,0)) +
-  scale_fill_manual(values = gs_colours,  
-                    guide = guide_legend(title = "Surface type",
-                                         byrow = TRUE
-                    ),
-                    labels = label_wrap(12)) +
-  scale_x_discrete(labels = gs_labels) +
-  theme_classic()+
-  theme(axis.text.x = element_text(size = 14, color = "black"),
-        axis.text.y = element_text(size = 14, color = "black"),
-        axis.title.x = element_text(size = 16, color = "black"),
-        axis.title.y = element_text(size = 16, color = "black"),
-        legend.title = element_text(size = 14),
-        legend.text = element_text(size = 12),
-        legend.key.justification = "center",
-        legend.key.spacing.y = unit(0.2, "cm"),
-        plot.margin = unit(c(.5, .7, .5, .5), "cm")
-  ) +
-  ggview::canvas(units = "cm",  width = 30, height = 18)
-
-ggsave(paste0(p.plots, "/land_cover_contribution.png"), plot = last_plot(),
-       device = "png",
-       width = 30, height = 18, units = "cm")
-
-
+write.csv(area_by_town_low, paste0(p.output, "/summary_plantable_area_town_20cc.csv"), row.names = F)
 
 
