@@ -80,7 +80,7 @@ for(i in seq_along(urban_files)) {
   reg_name_i <- unique(region_i$region)
   
   ### Regional outputs ###
-  lsoa_data_i <- vector("list", length = length(towns)) # output list for dataframe of cell selection metrics by LSOA -- All and NPG in same output
+  lsoa_data_i <- vector("list", length = length(towns)) # output list for dataframe of cell selection metrics by LSOA 
   
   ### For each town within region ###
   for(j in seq_along(towns)) { 
